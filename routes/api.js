@@ -17,7 +17,24 @@ function authenticateToken(req, res, next) {
   const token = authHeader && authHeader.split(' ')[1];
   if (token == null) { res.sendStatus(401); }
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
-    if (err) { throw res.sendStatus(403); }
+    if (err) {
+      const refreshToken = req.body.token;
+      if (refreshToken == null) return res.sendStatus(401);
+      connection.query('SELECT * from tokens where token = ?', [refreshToken], (tokenErr, results) => {
+        if (tokenErr) throw tokenErr;
+        if (results.length === 0) {
+          res.sendStatus(403);
+        } else {
+          jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (jwtErr, userData) => {
+            if (jwtErr) throw jwtErr;
+            const accessToken = jwt.sign({ email: userData.email, name: userData.name, userId: userData.userId }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15s' });
+            res.accessToken = accessToken;
+            res.user = userData;
+            next();
+          });
+        }
+      });
+    }
     req.user = user;
     next();
   });
