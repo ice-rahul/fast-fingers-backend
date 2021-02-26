@@ -1,0 +1,23 @@
+{
+  "name": "fast-fingers-backend",
+  "version": "1.0.0",
+  "description": "backend for fast fingers",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "npx nodemon index.js"
+  },
+  "author": "Rahul Agrawal",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.0.0",
+    "body-parser": "^1.19.0",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
+    "mysql": "^2.18.1",
+    "nodemon": "^2.0.7",
+    "uuid": "^8.3.2"
+  }
+}
