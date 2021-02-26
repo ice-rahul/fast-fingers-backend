@@ -61,7 +61,7 @@ router.post('/login', (req, res) => {
     connection.query('SELECT * from users where email = ?', [email], (err, results) => {
       if (err) throw err;
       if (results.length === 0 || !bcrypt.compareSync(password, results[0].password)) {
-        res.send({ status: false, msg: 'Invalid Credentials' });
+        res.send({ status: false, msg: 'Invalid Login Credentials' });
       } else {
         const data = { email: results[0].email, name: results[0].name, userId: results[0].user_id };
         const accessToken = jwt.sign(data, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15s' });
