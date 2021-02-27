@@ -28,13 +28,19 @@ function authenticateToken(req, res, next) {
           jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (jwtErr, userData) => {
             if (jwtErr) throw jwtErr;
             const accessToken = jwt.sign({ email: userData.email, name: userData.name, userId: userData.userId }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15s' });
-            res.user = [...userData, accessToken];
+            res.user = {
+              ...userData,
+              accessToken,
+            };
             next();
           });
         }
       });
     } else {
-      req.user = [...user, { accessToken: token }];
+      req.user = {
+        ...user,
+        accessToken: token,
+      };
       next();
     }
   });
@@ -113,7 +119,7 @@ router.get('/token', (req, res) => {
 
 router.get('/', authenticateToken, (req, res) => {
   res.send(res.user);
-  console.log(res.user, res.accessToken);
+  console.log(res.user);
 });
 
 router.post('/getWord', authenticateToken, (req, res) => {
