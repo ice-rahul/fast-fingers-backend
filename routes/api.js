@@ -28,15 +28,13 @@ function authenticateToken(req, res, next) {
           jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (jwtErr, userData) => {
             if (jwtErr) throw jwtErr;
             const accessToken = jwt.sign({ email: userData.email, name: userData.name, userId: userData.userId }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15s' });
-            res.accessToken = accessToken;
-            res.user = userData;
+            res.user = [...userData, accessToken];
             next();
           });
         }
       });
     } else {
-      res.accessToken = token;
-      req.user = user;
+      req.user = [...user, { accessToken: token }];
       next();
     }
   });
