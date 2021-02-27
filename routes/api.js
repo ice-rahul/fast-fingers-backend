@@ -18,7 +18,7 @@ function authenticateToken(req, res, next) {
   if (token == null) { res.sendStatus(401); }
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
     if (err) {
-      const refreshToken = req.body.token;
+      const refreshToken = req.headers.token;
       if (refreshToken == null) return res.sendStatus(401);
       connection.query('SELECT * from tokens where token = ?', [refreshToken], (tokenErr, results) => {
         if (tokenErr) throw tokenErr;
@@ -34,9 +34,11 @@ function authenticateToken(req, res, next) {
           });
         }
       });
+    } else {
+      res.accessToken = token;
+      req.user = user;
+      next();
     }
-    req.user = user;
-    next();
   });
 }
 
@@ -82,7 +84,7 @@ router.post('/login', (req, res) => {
       } else {
         const data = { email: results[0].email, name: results[0].name, userId: results[0].user_id };
         const accessToken = jwt.sign(data, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15s' });
-        const refreshToken = jwt.sign(data, process.env.REFRESH_TOKEN_SECRET);
+        const refreshToken = jwt.sign(data, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '1d' });
         connection.query('INSERT into tokens SET ?', { token: refreshToken }, (insertErr) => {
           if (insertErr) throw insertErr;
           res.send({ status: true, accessToken, refreshToken });
@@ -112,7 +114,8 @@ router.get('/token', (req, res) => {
 });
 
 router.get('/', authenticateToken, (req, res) => {
-  res.send(req.user);
+  res.send(res.user);
+  console.log(res.user, res.accessToken);
 });
 
 router.post('/getWord', authenticateToken, (req, res) => {
