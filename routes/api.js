@@ -14,11 +14,13 @@ router.use(express.json());
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+  token = JSON.parse(token);
+  let refreshToken = req.headers.token;
+  refreshToken = JSON.parse(refreshToken);
   if (token == null) { res.sendStatus(401); }
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
     if (err) {
-      const refreshToken = req.headers.token;
       if (refreshToken == null) return res.sendStatus(401);
       connection.query('SELECT * from tokens where token = ?', [refreshToken], (tokenErr, results) => {
         if (tokenErr) throw tokenErr;
@@ -29,17 +31,19 @@ function authenticateToken(req, res, next) {
             if (jwtErr) throw jwtErr;
             const accessToken = jwt.sign({ email: userData.email, name: userData.name, userId: userData.userId }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15s' });
             res.user = {
-              ...userData,
               accessToken,
+              refreshToken,
+              ...userData,
             };
             next();
           });
         }
       });
     } else {
-      req.user = {
-        ...user,
+      res.user = {
         accessToken: token,
+        refreshToken,
+        ...user,
       };
       next();
     }
@@ -65,7 +69,7 @@ router.post('/register', (req, res) => {
           if (insertErr) throw insertErr;
           connection.query('SELECT * from users where user_id = ? ', [userId], (err, records) => {
             if (err) throw err;
-            res.send({ ...records[0], status: true, msg: 'User Created SuccessFully' });
+            res.send({ ...records[0], status: true, msg: 'User Created SuccessFully, Please login to continue' });
           });
         });
       } else {
@@ -100,23 +104,6 @@ router.post('/login', (req, res) => {
   }
 });
 
-router.get('/token', (req, res) => {
-  const refreshToken = req.body.token;
-  if (refreshToken == null) return res.sendStatus(401);
-  connection.query('SELECT * from tokens where token = ?', [refreshToken], (err, results) => {
-    if (err) throw err;
-    if (results.length === 0) {
-      res.sendStatus(403);
-    } else {
-      jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (jwtErr, user) => {
-        if (jwtErr) throw jwtErr;
-        const accessToken = jwt.sign({ email: user.email, name: user.name, userId: user.userId }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15s' });
-        res.send({ accessToken });
-      });
-    }
-  });
-});
-
 router.get('/', authenticateToken, (req, res) => {
   res.send(res.user);
   console.log(res.user);
@@ -126,41 +113,63 @@ router.post('/getWord', authenticateToken, (req, res) => {
   const { level } = req.body;
   connection.query('SELECT * from words where level_id = ? ORDER BY RAND() LIMIT 1', level.toUpperCase(), (err, results) => {
     if (err) throw err;
-    res.send(results);
+    res.send({
+      ...res.user,
+      ...results[0],
+    });
   });
 });
 
 // add score Data
 router.post('/addScore', authenticateToken, (req, res) => {
   const { score } = req.body;
-  const { userId } = req.user;
+  const { userId } = res.user;
+  console.log(score, userId);
   const data = {
     user_id: userId,
     score,
   };
   connection.query('INSERT into game SET ? ', data, (error) => {
-    res.send('Score Added Successfully');
     if (error) throw error;
-    //    console.log(results.insertId);
+    connection.query('SELECT * from game where user_id = ? and is_disabled = 0', [userId], (err, results) => {
+      if (err) throw err;
+      res.send({
+        ...res.user,
+        result: results,
+      });
+      // console.log(results.insertId);
+    });
   });
 });
 
 // get score Data
-router.post('/getScore', authenticateToken, (req, res) => {
-  const { userId } = req.user;
-  connection.query('SELECT * from game where user_id = ? and is_disabled = 0', [userId], (error) => {
-    res.send('Score List');
+router.get('/getScore', authenticateToken, (req, res) => {
+  const { userId } = res.user;
+  connection.query('SELECT * from game where user_id = ? and is_disabled = 0', [userId], (error, results) => {
     if (error) throw error;
-    // console.log(results.insertId);
+    res.send({
+      result: results,
+      ...res.user,
+    });
+    console.log(results);
   });
 });
 
 // disable game score
-router.post('/quitGame', authenticateToken, (req, res) => {
-  const { userId } = req.user;
+router.get('/quitGame', authenticateToken, (req, res) => {
+  const { userId } = res.user;
   connection.query('Update game SET is_disabled = 1 where user_id = ? ', [userId], (error) => {
-    res.send('Score List');
     if (error) throw error;
+    res.send({ ...res.user });
+    // console.log(results.insertId);
+  });
+});
+
+router.post('/logout', authenticateToken, (req, res) => {
+  const { refreshToken } = res.user;
+  connection.query('DELETE from tokens where token = ? ', [JSON.parse(refreshToken)], (error) => {
+    if (error) throw error;
+    res.send({ status: false, msg: 'Logout Successful' });
     // console.log(results.insertId);
   });
 });

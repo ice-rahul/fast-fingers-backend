@@ -18,7 +18,7 @@ app.use(cors({
     return callback(null, true);
   },
 }));
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 4000;
 
 app.use(bodyParser.json());
 
@@ -29,5 +29,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(port, () => {
-//  console.log(`App listening at http://localhost:${port}`);
+  console.log(`App listening at http://localhost:${port}`);
 });
