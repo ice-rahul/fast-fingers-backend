@@ -12,6 +12,7 @@ dotenv.config();
 
 router.use(express.json());
 
+/* MiddleWare to check if we have a valid authentication token */
 function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1];
@@ -50,13 +51,13 @@ function authenticateToken(req, res, next) {
   });
 }
 
+/* Register a user */
 router.post('/register', (req, res) => {
   const { name, email, password } = req.body;
   if (name && email && password) {
     const userId = uuidv4();
     connection.query('SELECT * from users where email = ? ', [email], (selectErr, result) => {
       if (selectErr) throw selectErr;
-
       if (result.length === 0) {
         // new user
         const data = {
@@ -78,10 +79,12 @@ router.post('/register', (req, res) => {
       }
     });
   } else {
+    // some fields missing
     res.send({ status: false, msg: 'All Fields are mandatory' });
   }
 });
 
+/* user login */
 router.post('/login', (req, res) => {
   const { email, password } = req.body;
   if (email && password) {
@@ -104,14 +107,15 @@ router.post('/login', (req, res) => {
   }
 });
 
+/* Get user detail */
 router.get('/', authenticateToken, (req, res) => {
   res.send(res.user);
-  console.log(res.user);
 });
 
+/* Get words on the basis of difficulty level */
 router.post('/getWords', authenticateToken, (req, res) => {
   const { level } = req.body;
-  connection.query('SELECT * from words where level_id = ? ORDER BY RAND() LIMIT 1000', level.toUpperCase(), (err, results) => {
+  connection.query('SELECT * from words where level_id = ? ORDER BY RAND() LIMIT 1000', [level.toUpperCase()], (err, results) => {
     if (err) throw err;
     res.send({
       ...res.user,
@@ -120,11 +124,10 @@ router.post('/getWords', authenticateToken, (req, res) => {
   });
 });
 
-// add score Data
+/* add score to user */
 router.post('/addScore', authenticateToken, (req, res) => {
   const { score } = req.body;
   const { userId } = res.user;
-  console.log(score, userId);
   const data = {
     user_id: userId,
     score,
@@ -137,12 +140,11 @@ router.post('/addScore', authenticateToken, (req, res) => {
         ...res.user,
         result: results,
       });
-      // console.log(results.insertId);
     });
   });
 });
 
-// get score Data
+/* get all score specified to user */
 router.get('/getScore', authenticateToken, (req, res) => {
   const { userId } = res.user;
   connection.query('SELECT * from game where user_id = ? and is_disabled = 0', [userId], (error, results) => {
@@ -151,29 +153,28 @@ router.get('/getScore', authenticateToken, (req, res) => {
       result: results,
       ...res.user,
     });
-    console.log(results);
   });
 });
 
-// disable game score
+/* quit game and disable score visibility on scoreboard */
 router.get('/quitGame', authenticateToken, (req, res) => {
   const { userId } = res.user;
   connection.query('Update game SET is_disabled = 1 where user_id = ? ', [userId], (error) => {
     if (error) throw error;
     res.send({ ...res.user });
-    // console.log(results.insertId);
   });
 });
 
+/* user logout */
 router.post('/logout', authenticateToken, (req, res) => {
   const { refreshToken } = res.user;
   connection.query('DELETE from tokens where token = ? ', [JSON.parse(refreshToken)], (error) => {
     if (error) throw error;
     res.send({ status: false, msg: 'Logout Successful' });
-    // console.log(results.insertId);
   });
 });
 
+/* send data from json to database */
 router.get('/sendWordsToDatabase', (req, res) => {
   const { level } = req.query;
   let min = 0;
