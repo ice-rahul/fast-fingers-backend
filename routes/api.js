@@ -109,13 +109,13 @@ router.get('/', authenticateToken, (req, res) => {
   console.log(res.user);
 });
 
-router.post('/getWord', authenticateToken, (req, res) => {
+router.post('/getWords', authenticateToken, (req, res) => {
   const { level } = req.body;
-  connection.query('SELECT * from words where level_id = ? ORDER BY RAND() LIMIT 1', level.toUpperCase(), (err, results) => {
+  connection.query('SELECT * from words where level_id = ? ORDER BY RAND() LIMIT 1000', level.toUpperCase(), (err, results) => {
     if (err) throw err;
     res.send({
       ...res.user,
-      ...results[0],
+      result: results,
     });
   });
 });
