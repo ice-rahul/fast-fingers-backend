@@ -4,6 +4,7 @@ import cors from 'cors';
 import userRoute from './routes/api.js';
 
 const app = express();
+/*
 const allowedOrigins = ['http://localhost:3000', 'https://rahul-fastfingers.netlify.app'];
 app.use(cors({
   origin(origin, callback) {
@@ -18,6 +19,8 @@ app.use(cors({
     return callback(null, true);
   },
 }));
+*/
+app.use(cors());
 const port = process.env.PORT || 4000;
 
 app.use(bodyParser.json());
